@@ -158,10 +158,10 @@ select.fg-s{appearance:none;cursor:pointer}
 /* FILTER BAR */
 .fb{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .fb-s{flex:1;min-width:180px;position:relative}
-.fb-s input{width:100%;padding:9px 12px 9px 32px;border-radius:var(--rs);border:1px solid var(--bd);font-size:12px;background:#F8FAFC;color:var(--tx)}
+.fb-s input{width:100%;padding:9px 12px 9px 32px;border-radius:var(--rs);border:1px solid var(--bd);font-size:12px;background:#F8FAFC;color:var(--tx);font-family:'Tajawal',sans-serif}
 .fb-s input:focus{border-color:var(--p2);background:#fff}
 .fb-s .ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none;font-size:14px}
-.fb select{min-width:140px;padding:9px 12px;border-radius:var(--rs);border:1px solid var(--bd);font-size:12px;background:#F8FAFC;appearance:none;cursor:pointer;color:var(--tx)}
+.fb-sel{min-width:140px;padding:9px 12px;border-radius:var(--rs);border:1px solid var(--bd);font-size:12px;background:#F8FAFC;appearance:none;cursor:pointer;color:var(--tx);font-family:'Tajawal',sans-serif}
 .qf{display:inline-flex;padding:6px 14px;border-radius:7px;border:1px solid var(--bd);background:#fff;color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer;transition:.15s}
 .qf:hover{border-color:var(--p2);color:var(--p2)}.qf.on{border-color:var(--p2);color:var(--p2);background:#EFF6FF}
 
@@ -368,8 +368,8 @@ function taskOpts(){return tasks.map(function(t){return '<option>'+t.name+'</opt
 var _projSearch='',_projStat='all',_projRisk='all',_taskSearch='',_taskStatF='all',_taskProjF='all';
 function render(){calcProgress();var fn={dashboard:rDash,calendar:rCal,projects:rProj,tasks:rTask,finance:rFin,hr:rHR,evaluations:rEval,users:rUsers,settings:rSet};$('PG').innerHTML=(fn[page]||rDash)();restoreFilters()}
 function restoreFilters(){if($('projSearch'))$('projSearch').value=_projSearch;if($('projStat'))$('projStat').value=_projStat;if($('projRisk'))$('projRisk').value=_projRisk;if($('taskSearch'))$('taskSearch').value=_taskSearch;if($('taskStatF'))$('taskStatF').value=_taskStatF;if($('taskProjF'))$('taskProjF').value=_taskProjF}
-function projFilter(){_projSearch=$('projSearch')?$('projSearch').value:'';_projStat=$('projStat')?$('projStat').value:'all';_projRisk=$('projRisk')?$('projRisk').value:'all';$('projTbl').innerHTML=projTblHTML()}
-function taskFilter(){_taskSearch=$('taskSearch')?$('taskSearch').value:'';_taskStatF=$('taskStatF')?$('taskStatF').value:'all';_taskProjF=$('taskProjF')?$('taskProjF').value:'all';$('taskTbl').innerHTML=taskTblHTML()}
+function projFilter(){try{var el=$('projSearch');_projSearch=el?el.value:'';_projStat=$('projStat')?$('projStat').value:'all';_projRisk=$('projRisk')?$('projRisk').value:'all';var tbl=$('projTbl');if(tbl)tbl.innerHTML=projTblHTML();if(el){el.focus();var len=el.value.length;el.setSelectionRange(len,len)}}catch(e){console.error('projFilter error:',e)}}
+function taskFilter(){try{var el=$('taskSearch');_taskSearch=el?el.value:'';_taskStatF=$('taskStatF')?$('taskStatF').value:'all';_taskProjF=$('taskProjF')?$('taskProjF').value:'all';var tbl=$('taskTbl');if(tbl)tbl.innerHTML=taskTblHTML();if(el){el.focus();var len=el.value.length;el.setSelectionRange(len,len)}}catch(e){console.error('taskFilter error:',e)}}
 
 // === DASHBOARD ===
 function rDash(){
@@ -394,7 +394,7 @@ function rDash(){
 // === PROJECTS ===
 function rProj(){
   var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:12px;color:var(--tx2)">إجمالي: <b>'+projects.length+'</b></span><button class="btn btn-p" onclick="openAddP()">+ مشروع جديد</button></div>';
-  h+='<div class="fb"><div class="fb-s"><input placeholder="بحث بالاسم، المدير، القسم..." id="projSearch" oninput="projFilter()"><span class="ic">🔍</span></div><select class="fb" id="projStat" onchange="projFilter()"><option value="all">جميع الحالات</option><option value="قيد التنفيذ">قيد التنفيذ</option><option value="معتمد">معتمد</option><option value="مسودة">مسودة</option><option value="متوقف">متوقف</option></select><select class="fb" id="projRisk" onchange="projFilter()"><option value="all">جميع المخاطر</option><option value="عالي">عالي</option><option value="متوسط">متوسط</option><option value="منخفض">منخفض</option></select></div>';
+  h+='<div class="fb"><div class="fb-s"><input type="text" autocomplete="off" placeholder="بحث بالاسم، المدير، القسم..." id="projSearch" oninput="projFilter()"><span class="ic">🔍</span></div><select class="fb-sel" id="projStat" onchange="projFilter()"><option value="all">جميع الحالات</option><option value="قيد التنفيذ">قيد التنفيذ</option><option value="معتمد">معتمد</option><option value="مسودة">مسودة</option><option value="متوقف">متوقف</option></select><select class="fb-sel" id="projRisk" onchange="projFilter()"><option value="all">جميع المخاطر</option><option value="عالي">عالي</option><option value="متوسط">متوسط</option><option value="منخفض">منخفض</option></select></div>';
   h+='<div id="projTbl">'+projTblHTML()+'</div>';
   return h;
 }
@@ -408,7 +408,7 @@ function projTblHTML(){
 // === TASKS ===
 function rTask(){
   var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center"><button class="btn btn-p" onclick="openAddT()">+ مهمة جديدة</button><div style="display:flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden"><button class="qf'+(curTV==='table'?' on':'')+'" onclick="curTV=\'table\';render()" style="border:0;border-radius:0">⊞ جدول</button><button class="qf'+(curTV==='board'?' on':'')+'" onclick="curTV=\'board\';render()" style="border:0;border-radius:0">⊟ لوحة</button></div></div>';
-  h+='<div class="fb"><div class="fb-s"><input placeholder="بحث بالمهمة، المشروع، المكلف..." id="taskSearch" oninput="taskFilter()"><span class="ic">🔍</span></div><select class="fb" id="taskStatF" onchange="taskFilter()"><option value="all">الكل</option><option value="pending">معلقة</option><option value="in-progress">قيد التنفيذ</option><option value="completed">مكتملة</option></select><select class="fb" id="taskProjF" onchange="taskFilter()"><option value="all">جميع المشاريع</option>'+projects.map(function(p){return '<option>'+p.name+'</option>'}).join('')+'</select></div>';
+  h+='<div class="fb"><div class="fb-s"><input type="text" autocomplete="off" placeholder="بحث بالمهمة، المشروع، المكلف..." id="taskSearch" oninput="taskFilter()"><span class="ic">🔍</span></div><select class="fb-sel" id="taskStatF" onchange="taskFilter()"><option value="all">الكل</option><option value="pending">معلقة</option><option value="in-progress">قيد التنفيذ</option><option value="completed">مكتملة</option></select><select class="fb-sel" id="taskProjF" onchange="taskFilter()"><option value="all">جميع المشاريع</option>'+projects.map(function(p){return '<option>'+p.name+'</option>'}).join('')+'</select></div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="qf'+(curQF==='all'?' on':'')+'" onclick="curQF=\'all\';taskFilter()">☰ الكل</button><button class="qf'+(curQF==='overdue'?' on':'')+'" onclick="curQF=\'overdue\';taskFilter()">⏱ متأخرة</button><button class="qf'+(curQF==='priority'?' on':'')+'" onclick="curQF=\'priority\';taskFilter()">⭐ عالية</button></div>';
   h+='<div id="taskTbl">'+taskTblHTML()+'</div>';
   return h;
@@ -428,7 +428,7 @@ function taskTblHTML(){
 // === CALENDAR ===
 function rCal(){
   var ms=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  var h='<div class="fb"><select class="fb" id="calProj" onchange="render()"><option value="all">جميع المشاريع</option>'+projects.map(function(p){return '<option>'+p.name+'</option>'}).join('')+'</select><button class="btn btn-p" onclick="calM=new Date().getMonth();calY=new Date().getFullYear();render()">اليوم</button></div>';
+  var h='<div class="fb"><select class="fb-sel" id="calProj" onchange="render()"><option value="all">جميع المشاريع</option>'+projects.map(function(p){return '<option>'+p.name+'</option>'}).join('')+'</select><button class="btn btn-p" onclick="calM=new Date().getMonth();calY=new Date().getFullYear();render()">اليوم</button></div>';
   h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><button class="btn" style="background:var(--bg);border:1px solid var(--bd);color:var(--tx)" onclick="calNav(-1)">→</button><span style="font-size:16px;font-weight:800">'+ms[calM]+' '+calY+'</span><button class="btn" style="background:var(--bg);border:1px solid var(--bd);color:var(--tx)" onclick="calNav(1)">←</button></div>';
   h+='<div class="cg"><div class="c-hd">سبت</div><div class="c-hd">أحد</div><div class="c-hd">اثنين</div><div class="c-hd">ثلاثاء</div><div class="c-hd">أربعاء</div><div class="c-hd">خميس</div><div class="c-hd">جمعة</div>';
   var pf=$('calProj')?$('calProj').value:'all';
