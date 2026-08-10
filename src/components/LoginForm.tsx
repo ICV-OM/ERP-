@@ -60,7 +60,7 @@ export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }
 
   return <main className="loginPage">
     <section className={`loginVisual ${heroStyles.visualHost}`}>
-      <LoginHeroSlider labels={labels}/>
+      <LoginHeroSlider labels={labels} locale={locale}/>
     </section>
     <section className="loginSide">
       <div className="loginLanguage"><LanguageToggle locale={locale}/></div>
