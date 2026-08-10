@@ -1,0 +1,4 @@
+"use client";
+import { useEffect,useState } from "react";
+
+export function UserAvatar({name,size=38}:{name:string;size?:number}){const [version,setVersion]=useState(1),[failed,setFailed]=useState(false);useEffect(()=>{const refresh=()=>{setFailed(false);setVersion(v=>v+1)};document.addEventListener("alturud-avatar-updated",refresh);return()=>document.removeEventListener("alturud-avatar-updated",refresh)},[]);const initials=(name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("")||"U").toUpperCase();return <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center",background:"#e5e7eb",flex:"0 0 auto",fontWeight:800}}>{failed?<span>{initials}</span>:<img src={`/api/account/avatar?v=${version}`} alt="" width={size} height={size} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setFailed(true)}/>}</div>}
