@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { LoginHeroSlider } from "@/components/LoginHeroSlider";
 import type { Locale } from "@/lib/locale";
 
 type Labels = {
@@ -57,12 +58,8 @@ export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }
   const forgotLabel=locale==="ar"?"هل نسيت كلمة المرور؟":"Forgot your password?";
 
   return <main className="loginPage">
-    <section className="loginVisual">
-      <div className="loginLogo" style={{minHeight:56}}>
-        <img src="/alturud-logo.svg" alt="ALTURUD" style={{width:112,height:56,objectFit:"contain",display:"block"}}/>
-      </div>
-      <div><div className="eyebrow heroEyebrow">{labels.platform}</div><h1>{labels.headline}</h1><p>{labels.description}</p></div>
-      <div className="securityStrip">{labels.badges.map(x=><span key={x}>{x}</span>)}</div>
+    <section className="loginVisual" style={{position:"relative",padding:0,overflow:"hidden",minHeight:"100vh"}}>
+      <LoginHeroSlider labels={labels}/>
     </section>
     <section className="loginSide">
       <div className="loginLanguage"><LanguageToggle locale={locale}/></div>
