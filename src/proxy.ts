@@ -8,6 +8,7 @@ const PUBLIC=[
   "/api/auth/login",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
+  "/api/public/hero-slides",
   "/alturud-logo.svg",
   "/hero-port.svg",
   "/hero-containers.svg",
