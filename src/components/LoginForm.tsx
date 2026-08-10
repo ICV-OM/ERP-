@@ -13,14 +13,46 @@ export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const router=useRouter();
+
   async function submit(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();setBusy(true);setError("");
-    const f=new FormData(e.currentTarget);
-    const r=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:f.get("email"),password:f.get("password")})});
-    const d=await r.json();
-    if(!r.ok){const api=String(d.error??"");const arErrors:Record<string,string>={"Invalid credentials":"البريد الإلكتروني أو كلمة المرور غير صحيحة.","Too many attempts. Try again later.":"عدد محاولات الدخول كبير. حاول مرة أخرى لاحقًا.","Request rejected":"تم رفض الطلب لأسباب أمنية."};setError(locale==="ar"?(arErrors[api]??labels.unable):(api||labels.unable));setBusy(false);return}
-    router.replace("/dashboard");router.refresh();
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      const f=new FormData(e.currentTarget);
+      const r=await fetch("/api/auth/login",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({email:f.get("email"),password:f.get("password")}),
+        signal:controller.signal
+      });
+
+      const d=await r.json().catch(()=>({error:""}));
+      if(!r.ok){
+        const api=String(d.error??"");
+        const arErrors:Record<string,string>={
+          "Invalid credentials":"البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+          "Too many attempts. Try again later.":"عدد محاولات الدخول كبير. حاول مرة أخرى لاحقًا.",
+          "Request rejected":"تم رفض الطلب لأسباب أمنية."
+        };
+        setError(locale==="ar"?(arErrors[api]??labels.unable):(api||labels.unable));
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch {
+      setError(labels.unable);
+    } finally {
+      window.clearTimeout(timeout);
+      setBusy(false);
+    }
   }
+
   return <main className="loginPage">
     <section className="loginVisual">
       <div className="loginLogo"><div className="brandMark">A</div><div><strong>ALTURUD</strong><div>INTERNATIONAL</div></div></div>
