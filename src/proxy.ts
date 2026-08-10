@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC=["/login","/api/auth/login"];
+const PUBLIC=[
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth/login",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/alturud-logo.svg"
+];
 function isPublic(path:string){return PUBLIC.some(p=>path===p||path.startsWith(`${p}/`))||path.startsWith("/_next/")||path==="/favicon.ico"}
 function sessionName(){return process.env.COOKIE_SECURE==="true"?"__Host-alturud_session":"alturud_session"}
 async function validToken(token:string|undefined){if(!token||!process.env.SESSION_SECRET)return false;try{const key=new TextEncoder().encode(process.env.SESSION_SECRET);await jwtVerify(token,key,{issuer:"alturud-hr-erp",audience:"alturud-web"});return true}catch{return false}}
