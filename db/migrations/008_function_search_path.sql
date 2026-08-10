@@ -1,0 +1,11 @@
+ALTER FUNCTION public.sync_asset_assignment_status() SET search_path = public, pg_temp;
+ALTER FUNCTION public.calc_payslip_net() SET search_path = public, pg_temp;
+ALTER FUNCTION public.recalc_payroll_run(uuid) SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_payroll_run_totals() SET search_path = public, pg_temp;
+ALTER FUNCTION public.recalc_leave_balance(uuid,uuid,uuid,integer) SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_leave_balance() SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_onboarding_completion() SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_training_expiry() SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_approval_decision_time() SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_offboarding_completion() SET search_path = public, pg_temp;
+ALTER FUNCTION public.sync_approval_entity_status() SET search_path = public, pg_temp;
