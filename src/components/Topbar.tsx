@@ -1,29 +1,36 @@
 "use client";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthUser } from "@/lib/session";
 import type { Locale } from "@/lib/locale";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { getModules } from "@/lib/modules";
+import { can, type Permission } from "@/lib/permissions";
 
 function csrf(){return document.cookie.split("; ").find(v=>v.startsWith("alturud_csrf="))?.split("=")[1]??""}
-
 const labels={
-  ar:{company:"الطرود الدولية",title:"نظام تخطيط موارد الموارد البشرية",search:"بحث",notifications:"الإشعارات",signOut:"تسجيل الخروج",signingOut:"جارٍ تسجيل الخروج…"},
-  en:{company:"ALTURUD INTERNATIONAL",title:"Human Resources ERP",search:"Search",notifications:"Notifications",signOut:"Sign out",signingOut:"Signing out…"}
+  ar:{company:"الطرود الدولية",title:"نظام تخطيط موارد الموارد البشرية",search:"بحث",notifications:"الإشعارات",signOut:"تسجيل الخروج",signingOut:"جارٍ تسجيل الخروج…",searchPlaceholder:"ابحث عن وحدة أو شاشة...",noResults:"لا توجد نتائج",noNotifications:"لا توجد إشعارات حالية",loading:"جاري التحميل..."},
+  en:{company:"ALTURUD INTERNATIONAL",title:"Human Resources ERP",search:"Search",notifications:"Notifications",signOut:"Sign out",signingOut:"Signing out…",searchPlaceholder:"Search modules and screens...",noResults:"No results",noNotifications:"No current notifications",loading:"Loading..."}
 } as const;
 const roleAr:Record<string,string>={SUPER_ADMIN:"مدير النظام العام",HR_ADMIN:"مسؤول الموارد البشرية",HR_MANAGER:"مدير الموارد البشرية",MANAGER:"مدير",PAYROLL:"مسؤول الرواتب",RECRUITER:"مسؤول التوظيف",EMPLOYEE:"موظف",AUDITOR:"مدقق"};
 function roleLabel(role:string,locale:Locale){return locale==="ar"?(roleAr[role]??role):role.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
+const modulePermission:Record<string,Permission>={organization:"organization:read",attendance:"attendance:read",shifts:"shifts:read",leave:"leave:read",payroll:"payroll:read",recruitment:"recruitment:read",onboarding:"employee:read",documents:"documents:read",performance:"performance:read",training:"training:read",workforce:"workforce:read",assets:"assets:read",requests:"requests:read",approvals:"approvals:read",relations:"relations:read",offboarding:"offboarding:read",reports:"reports:view",admin:"admin:manage"};
+type Notification={id:string;title:string;titleAr:string;count:number;href:string;level:string};
+const popoverStyle:React.CSSProperties={position:"absolute",top:"calc(100% + 10px)",insetInlineEnd:0,width:360,maxWidth:"80vw",maxHeight:420,overflow:"auto",zIndex:50,background:"var(--panel, #fff)",border:"1px solid rgba(100,116,139,.22)",borderRadius:14,boxShadow:"0 18px 45px rgba(15,23,42,.18)",padding:12};
 
-export function Topbar({ user, locale }: { user: AuthUser; locale: Locale }) {
-  const [busy,setBusy]=useState(false);const router=useRouter();const t=labels[locale];
+export function Topbar({user,locale}:{user:AuthUser;locale:Locale}){
+  const [busy,setBusy]=useState(false),[searchOpen,setSearchOpen]=useState(false),[notificationOpen,setNotificationOpen]=useState(false),[q,setQ]=useState("");const [notifications,setNotifications]=useState<Notification[]>([]),[notificationsLoading,setNotificationsLoading]=useState(false);const router=useRouter();const t=labels[locale];
   async function logout(){setBusy(true);await fetch("/api/auth/logout",{method:"POST",headers:{"x-csrf-token":decodeURIComponent(csrf())}});router.replace("/login");router.refresh()}
-  return <header className="topbar">
-    <div><div className="eyebrow">{t.company}</div><div className="topTitle">{t.title}</div></div>
-    <div className="topActions">
-      <LanguageToggle locale={locale} compact/>
-      <button className="iconButton" aria-label={t.search}>⌕</button><button className="iconButton" aria-label={t.notifications}>◌</button>
+  async function loadNotifications(){setNotificationsLoading(true);try{const r=await fetch("/api/notifications",{cache:"no-store"});const d=await r.json();if(r.ok)setNotifications(d.items??[])}finally{setNotificationsLoading(false)}}
+  useEffect(()=>{void loadNotifications()},[]);
+  const searchItems=useMemo(()=>{const items:{title:string;subtitle:string;href:string}[]=[];if(can(user.role,"dashboard:view"))items.push({title:locale==="ar"?"لوحة التحكم":"Dashboard",subtitle:"",href:"/dashboard"});if(can(user.role,"employee:read"))items.push({title:locale==="ar"?"الموظفون":"Employees",subtitle:"",href:"/employees"});for(const m of Object.values(getModules(locale))){const p=modulePermission[m.key];if(!p||!can(user.role,p))continue;items.push({title:m.title,subtitle:m.subtitle,href:`/${m.key}`});for(const s of m.screens)items.push({title:s.title,subtitle:m.title,href:`/${m.key}/${s.slug}`})}const needle=q.trim().toLowerCase();return (needle?items.filter(x=>`${x.title} ${x.subtitle}`.toLowerCase().includes(needle)):items).slice(0,10)},[q,user.role,locale]);
+  const totalNotifications=notifications.reduce((sum,n)=>sum+n.count,0);
+  return <header className="topbar"><div><div className="eyebrow">{t.company}</div><div className="topTitle">{t.title}</div></div>
+    <div className="topActions"><LanguageToggle locale={locale} compact/>
+      <div style={{position:"relative"}}><button className="iconButton" aria-label={t.search} onClick={()=>{setSearchOpen(v=>!v);setNotificationOpen(false)}}>⌕</button>{searchOpen&&<div style={popoverStyle}><input autoFocus className="searchWide" value={q} onChange={e=>setQ(e.target.value)} placeholder={t.searchPlaceholder}/><div style={{display:"grid",gap:6,marginTop:10}}>{searchItems.length?searchItems.map(x=><Link key={x.href} href={x.href} className="screenCard" style={{padding:10}} onClick={()=>setSearchOpen(false)}><div><strong>{x.title}</strong>{x.subtitle&&<div className="mutedEmail">{x.subtitle}</div>}</div></Link>):<div className="emptyState">{t.noResults}</div>}</div></div>}</div>
+      <div style={{position:"relative"}}><button className="iconButton" aria-label={t.notifications} onClick={()=>{setNotificationOpen(v=>!v);setSearchOpen(false);void loadNotifications()}}>◌{totalNotifications>0&&<sup>{totalNotifications>99?"99+":totalNotifications}</sup>}</button>{notificationOpen&&<div style={popoverStyle}><div className="panelHead"><div><strong>{t.notifications}</strong></div><button className="rowAction" onClick={()=>void loadNotifications()}>↻</button></div>{notificationsLoading&&!notifications.length?<div className="emptyState">{t.loading}</div>:notifications.length?<div style={{display:"grid",gap:8}}>{notifications.map(n=><Link href={n.href} key={n.id} className="screenCard" style={{padding:10}} onClick={()=>setNotificationOpen(false)}><div><strong>{locale==="ar"?n.titleAr:n.title}</strong><div className="mutedEmail">{n.count}</div></div><span className={`badge ${n.level==="critical"?"review":"pending"}`}>{n.count}</span></Link>)}</div>:<div className="emptyState">{t.noNotifications}</div>}</div>}</div>
       <div className="userCard"><div className="avatar">{user.displayName.slice(0,1).toUpperCase()}</div><div><strong>{user.displayName}</strong><span>{roleLabel(user.role,locale)}</span></div></div>
       <button className="textButton" onClick={logout} disabled={busy}>{busy?t.signingOut:t.signOut}</button>
-    </div>
-  </header>;
+    </div></header>;
 }
