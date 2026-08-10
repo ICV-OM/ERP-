@@ -128,9 +128,10 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
 
   async function createSlide(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setBusy(true); setError(""); setMessage("");
     try {
-      const form = new FormData(event.currentTarget);
+      const form = new FormData(formElement);
       const source = form.get("image");
       if (!(source instanceof File) || source.size === 0) throw new Error(ar ? "اختر صورة أولاً." : "Choose an image first.");
       let upload: File;
@@ -141,7 +142,7 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
       const response = await fetch("/api/admin/hero-slides", { method: "POST", headers: { "x-csrf-token": csrf() }, body: form });
       const data = await readApi(response);
       if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر إضافة الشريحة" : "Unable to create slide"));
-      event.currentTarget.reset();
+      formElement.reset();
       if (preview) URL.revokeObjectURL(preview);
       setPreview("");
       setMessage(ar ? "تمت إضافة الشريحة ونشرها فورًا." : "Slide added and published immediately.");
