@@ -6,7 +6,7 @@ import { ui } from "@/lib/i18n";
 export function ModulePage({module,locale}:{module:ModuleConfig;locale:Locale}){
   const ar=locale==="ar";const t=ui(locale).modulePage;const first=module.screens[0];
   return <div>
-    <section className="pageHeader"><div><div className="eyebrow">{t.module} · {module.accent}</div><h1>{module.title}</h1><p>{module.subtitle}</p></div>{first&&<Link className="primaryButton" href={`/${module.key}/${first.slug}`}>{ar?"فتح مساحة العمل":"Open workspace"}</Link>}</section>
+    <section className="pageHeader"><div><div className="eyebrow">{t.module} · {module.accent}</div><h1>{module.title}</h1><p>{module.subtitle}</p></div><div className="pageActions">{module.key==="admin"&&<Link className="secondaryButton" href="/admin/users/new">{ar?"إنشاء مستخدم":"Create user"}</Link>}{first&&<Link className="primaryButton" href={`/${module.key}/${first.slug}`}>{ar?"فتح مساحة العمل":"Open workspace"}</Link>}</div></section>
     <div className="metricRow">
       <div className="metricCard"><span>{ar?"مساحات العمل":"Workspaces"}</span><strong>{module.screens.length}</strong><small>{ar?"شاشات تشغيلية مرتبطة بالبيانات":"Live operational screens"}</small></div>
       <div className="metricCard"><span>{ar?"مصدر البيانات":"Data source"}</span><strong>Supabase</strong><small>PostgreSQL</small></div>
