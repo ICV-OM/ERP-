@@ -1,0 +1,11 @@
+"use client";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Locale } from "@/lib/locale";
+function csrf(){return decodeURIComponent(document.cookie.split("; ").find(v=>v.startsWith("alturud_csrf="))?.split("=")[1]??"")}
+type Run={id:string;label:string};
+export function PayrollGenerator({locale,runs}:{locale:Locale;runs:Run[]}){
+  const ar=locale==="ar",router=useRouter();const [message,setMessage]=useState("");const [error,setError]=useState("");const [busy,setBusy]=useState(false);
+  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const id=String(f.get("runId")??"");if(!id)return;setBusy(true);setMessage("");setError("");try{const r=await fetch(`/api/payroll/runs/${id}/generate`,{method:"POST",headers:{"x-csrf-token":csrf()}});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to generate payroll");setMessage(ar?`تم توليد ${d.generated} قسيمة راتب وتحديث الإجماليات.`:`Generated ${d.generated} payslips and recalculated totals.`);router.refresh()}catch(e){setError(e instanceof Error?e.message:(ar?"تعذر توليد الرواتب":"Unable to generate payroll"))}finally{setBusy(false)}}
+  return <form className="formPanel" onSubmit={submit}>{error&&<div className="alert error">{error}</div>}{message&&<div className="alert">{message}</div>}<div className="formGrid"><label>{ar?"دورة الرواتب":"Payroll run"}<select name="runId" required defaultValue=""><option value="">—</option>{runs.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}</select></label></div><p>{ar?"سيستخدم النظام أحدث تعويض فعّال لكل موظف في الفترة ويضيف العمل الإضافي المعتمد فقط. يمكن تعديل القسائم لاحقًا قبل اعتماد الدورة.":"The system uses the latest effective compensation for each employee and includes only approved overtime. Payslips can still be adjusted before the run is approved."}</p><div className="formActions"><button type="button" className="secondaryButton" onClick={()=>router.back()}>{ar?"رجوع":"Back"}</button><button className="primaryButton" disabled={busy||!runs.length}>{busy?(ar?"جاري التوليد...":"Generating..."):(ar?"توليد الرواتب":"Generate payroll")}</button></div></form>;
+}
