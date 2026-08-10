@@ -18,7 +18,7 @@ export type Permission =
   | "assets:read" | "assets:write"
   | "requests:read" | "requests:write"
   | "reports:view"
-  | "admin:manage" | "audit:read"
+  | "admin:manage" | "branding:manage" | "audit:read"
   | "relations:read" | "relations:write"
   | "offboarding:read" | "offboarding:write"
   | "workforce:read" | "workforce:write"
@@ -30,7 +30,7 @@ const ALL: Permission[] = [
   "leave:read","leave:write","leave:approve","payroll:read","payroll:write",
   "recruitment:read","recruitment:write","performance:read","performance:write",
   "documents:read","documents:write","training:read","training:write","assets:read","assets:write",
-  "requests:read","requests:write","reports:view","admin:manage","audit:read",
+  "requests:read","requests:write","reports:view","admin:manage","branding:manage","audit:read",
   "relations:read","relations:write","offboarding:read","offboarding:write",
   "workforce:read","workforce:write","approvals:read","approvals:write"
 ];
@@ -40,7 +40,7 @@ const without = (blocked: Permission[]) => ALL.filter(p => !blocked.includes(p))
 const MAP: Record<Role, Permission[]> = {
   SUPER_ADMIN: ALL,
   HR_ADMIN: without(["admin:manage"]),
-  HR_MANAGER: without(["admin:manage"]),
+  HR_MANAGER: without(["admin:manage","branding:manage"]),
   MANAGER: [
     "dashboard:view","employee:read","organization:read","attendance:read","attendance:write",
     "shifts:read","shifts:write","leave:read","leave:write","leave:approve",
