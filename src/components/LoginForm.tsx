@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { LoginHeroSlider } from "@/components/LoginHeroSlider";
+import heroStyles from "@/components/LoginHeroSlider.module.css";
 import type { Locale } from "@/lib/locale";
 
 type Labels = {
@@ -58,7 +59,7 @@ export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }
   const forgotLabel=locale==="ar"?"هل نسيت كلمة المرور؟":"Forgot your password?";
 
   return <main className="loginPage">
-    <section className="loginVisual" style={{position:"relative",padding:0,overflow:"hidden",minHeight:"100vh"}}>
+    <section className={`loginVisual ${heroStyles.visualHost}`}>
       <LoginHeroSlider labels={labels}/>
     </section>
     <section className="loginSide">
@@ -68,7 +69,7 @@ export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }
         {error&&<div className="alert error">{error}</div>}
         <label>{labels.email}<input name="email" type="email" autoComplete="username" required /></label>
         <label>{labels.password}<input name="password" type="password" autoComplete="current-password" minLength={12} required /></label>
-        <div style={{display:"flex",justifyContent:"flex-end",marginTop:4,marginBottom:2}}><Link href="/forgot-password" style={{fontSize:11,color:"var(--brand)",fontWeight:700}}>{forgotLabel}</Link></div>
+        <div className={heroStyles.forgotRow}><Link href="/forgot-password" className={heroStyles.forgotLink}>{forgotLabel}</Link></div>
         <button className="primaryButton" disabled={busy}>{busy?labels.verifying:labels.secureSignIn}</button>
         <div className="loginHelp">{labels.help}</div>
       </form>
