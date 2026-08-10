@@ -19,12 +19,77 @@ type Slide = {
   endsAt: string;
 };
 
+type ApiData = { error?: string; [key: string]: unknown };
+
+const SOURCE_MAX_BYTES = 15 * 1024 * 1024;
+const SAFE_UPLOAD_BYTES = 3 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function csrf() {
   return decodeURIComponent(document.cookie.split("; ").find(v => v.startsWith("alturud_csrf="))?.split("=")[1] ?? "");
 }
 
 function localInput(value: string) {
   return value ? value.slice(0, 16) : "";
+}
+
+async function readApi(response: Response): Promise<ApiData> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as ApiData;
+  } catch {
+    return { error: text.slice(0, 240) };
+  }
+}
+
+function friendlyError(message: string | undefined, ar: boolean, fallback: string) {
+  const value = message ?? "";
+  if (/request entity|payload too large|body.*too large|413/i.test(value)) {
+    return ar
+      ? "حجم الصورة أكبر من الحد المسموح للإرسال. اختر الصورة مرة أخرى؛ سيقوم النظام بضغطها تلقائيًا قبل الرفع."
+      : "The image is too large to upload. Select it again and the system will compress it automatically before upload.";
+  }
+  return value || fallback;
+}
+
+async function compressHeroImage(file: File): Promise<File> {
+  if (!ALLOWED_TYPES.has(file.type)) throw new Error("UNSUPPORTED_IMAGE");
+  if (file.size > SOURCE_MAX_BYTES) throw new Error("SOURCE_TOO_LARGE");
+  if (file.size <= SAFE_UPLOAD_BYTES) return file;
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, 1920 / bitmap.width, 1080 / bitmap.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("IMAGE_PROCESSING_FAILED");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.86;
+    let blob: Blob | null = null;
+    while (quality >= 0.42) {
+      blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/webp", quality));
+      if (blob && blob.size <= SAFE_UPLOAD_BYTES) break;
+      quality -= 0.08;
+    }
+    if (!blob || blob.size > SAFE_UPLOAD_BYTES) throw new Error("COMPRESSED_TOO_LARGE");
+    const base = file.name.replace(/\.[^.]+$/, "") || "hero-slide";
+    return new File([blob], `${base}.webp`, { type: "image/webp", lastModified: Date.now() });
+  } finally {
+    bitmap.close();
+  }
+}
+
+function imageError(error: unknown, ar: boolean) {
+  const code = error instanceof Error ? error.message : "";
+  if (code === "UNSUPPORTED_IMAGE") return ar ? "يسمح فقط بصور JPG أو PNG أو WebP." : "Only JPG, PNG and WebP images are allowed.";
+  if (code === "SOURCE_TOO_LARGE") return ar ? "الصورة الأصلية أكبر من 15MB. اختر صورة أصغر." : "The source image is larger than 15MB. Choose a smaller image.";
+  if (code === "COMPRESSED_TOO_LARGE") return ar ? "تعذر ضغط الصورة إلى حجم مناسب. جرّب صورة أصغر أو بدقة أقل." : "The image could not be compressed enough. Try a smaller or lower-resolution image.";
+  if (code === "IMAGE_PROCESSING_FAILED") return ar ? "تعذر معالجة الصورة في المتصفح." : "The image could not be processed in the browser.";
+  return error instanceof Error ? error.message : (ar ? "تعذر معالجة الصورة" : "Unable to process image");
 }
 
 export function HeroSliderManager({ locale }: { locale: Locale }) {
@@ -44,9 +109,9 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
     setError("");
     try {
       const response = await fetch("/api/admin/hero-slides", { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to load slides");
-      setSlides(data.slides || []);
+      const data = await readApi(response);
+      if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر تحميل الشرائح" : "Unable to load slides"));
+      setSlides((data.slides as Slide[] | undefined) || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : (ar ? "تعذر تحميل الشرائح" : "Unable to load slides"));
     } finally {
@@ -66,11 +131,16 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
     setBusy(true); setError(""); setMessage("");
     try {
       const form = new FormData(event.currentTarget);
+      const source = form.get("image");
+      if (!(source instanceof File) || source.size === 0) throw new Error(ar ? "اختر صورة أولاً." : "Choose an image first.");
+      let upload: File;
+      try { upload = await compressHeroImage(source); } catch (e) { throw new Error(imageError(e, ar)); }
+      form.set("image", upload);
       form.set("sortOrder", String((slides.length + 1) * 10));
       form.set("isActive", "true");
       const response = await fetch("/api/admin/hero-slides", { method: "POST", headers: { "x-csrf-token": csrf() }, body: form });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to create slide");
+      const data = await readApi(response);
+      if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر إضافة الشريحة" : "Unable to create slide"));
       event.currentTarget.reset();
       if (preview) URL.revokeObjectURL(preview);
       setPreview("");
@@ -100,8 +170,8 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
           endsAt: slide.endsAt || null
         })
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to save slide");
+      const data = await readApi(response);
+      if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر حفظ الشريحة" : "Unable to save slide"));
       setMessage(ar ? "تم حفظ التعديلات وتطبيقها على شاشة الدخول." : "Changes saved and applied to the login screen.");
       await load();
     } catch (e) {
@@ -113,10 +183,12 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
     if (!file) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const form = new FormData(); form.set("image", file);
+      let upload: File;
+      try { upload = await compressHeroImage(file); } catch (e) { throw new Error(imageError(e, ar)); }
+      const form = new FormData(); form.set("image", upload);
       const response = await fetch(`/api/admin/hero-slides/${id}`, { method: "PUT", headers: { "x-csrf-token": csrf() }, body: form });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to replace image");
+      const data = await readApi(response);
+      if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر استبدال الصورة" : "Unable to replace image"));
       setMessage(ar ? "تم استبدال الصورة فورًا." : "Image replaced immediately.");
       await load();
     } catch (e) {
@@ -129,8 +201,8 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
     setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch(`/api/admin/hero-slides/${id}`, { method: "DELETE", headers: { "x-csrf-token": csrf() } });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to delete slide");
+      const data = await readApi(response);
+      if (!response.ok) throw new Error(friendlyError(data.error, ar, ar ? "تعذر حذف الشريحة" : "Unable to delete slide"));
       setMessage(ar ? "تم حذف الشريحة." : "Slide deleted.");
       await load();
     } catch (e) {
@@ -154,7 +226,12 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
         method: "PATCH",
         headers: { "content-type": "application/json", "x-csrf-token": csrf() },
         body: JSON.stringify({ sortOrder: slide.sortOrder })
-      }).then(async r => { if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || "Unable to reorder"); } })));
+      }).then(async response => {
+        if (!response.ok) {
+          const data = await readApi(response);
+          throw new Error(friendlyError(data.error, ar, ar ? "تعذر تحديث الترتيب" : "Unable to reorder"));
+        }
+      })));
       setMessage(ar ? "تم تحديث ترتيب الشرائح." : "Slide order updated.");
       await load();
     } catch (e) {
@@ -175,10 +252,10 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
 
     <section className={styles.panel}>
       <h2>{ar ? "إضافة شريحة جديدة" : "Add new slide"}</h2>
-      <p>{ar ? "ارفع JPG أو PNG أو WebP بحجم لا يتجاوز 6MB. يفضّل مقاسًا عريضًا مثل 1920×1080." : "Upload JPG, PNG or WebP up to 6MB. A wide format such as 1920×1080 is recommended."}</p>
+      <p>{ar ? "ارفع JPG أو PNG أو WebP حتى 15MB؛ الصور الكبيرة تُضغط تلقائيًا قبل الرفع. يفضّل مقاسًا عريضًا مثل 1920×1080." : "Upload JPG, PNG or WebP up to 15MB; large images are compressed automatically before upload. A wide format such as 1920×1080 is recommended."}</p>
       <form onSubmit={createSlide}>
         <div className={styles.grid}>
-          <label className={`${styles.field} ${styles.wide}`}>{ar ? "الصورة" : "Image"}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => { const file=e.currentTarget.files?.[0]; if(preview)URL.revokeObjectURL(preview); setPreview(file?URL.createObjectURL(file):""); }}/></label>
+          <label className={`${styles.field} ${styles.wide}`}>{ar ? "الصورة" : "Image"}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" required onChange={e => { const file=e.currentTarget.files?.[0]; if(preview)URL.revokeObjectURL(preview); if(file && file.size>SOURCE_MAX_BYTES){setError(ar?"الصورة أكبر من 15MB. اختر صورة أصغر.":"The image is larger than 15MB. Choose a smaller image.");e.currentTarget.value="";setPreview("");return;} setError("");setPreview(file?URL.createObjectURL(file):""); }}/></label>
           {preview && <div className={`${styles.preview} ${styles.wide}`}><img src={preview} alt="Preview"/></div>}
           <label className={styles.field}>{ar ? "العنوان بالعربية" : "Arabic title"}<input name="titleAr" maxLength={180}/></label>
           <label className={styles.field}>{ar ? "العنوان بالإنجليزية" : "English title"}<input name="titleEn" maxLength={180}/></label>
@@ -189,7 +266,7 @@ export function HeroSliderManager({ locale }: { locale: Locale }) {
           <label className={styles.field}>{ar ? "بداية الظهور (اختياري)" : "Start date (optional)"}<input name="startsAt" type="datetime-local"/></label>
           <label className={styles.field}>{ar ? "نهاية الظهور (اختياري)" : "End date (optional)"}<input name="endsAt" type="datetime-local"/></label>
         </div>
-        <div className={styles.actions}><button className={styles.primary} disabled={busy}>{busy ? (ar ? "جاري الحفظ..." : "Saving...") : (ar ? "إضافة ونشر" : "Add & publish")}</button></div>
+        <div className={styles.actions}><button className={styles.primary} disabled={busy}>{busy ? (ar ? "جاري ضغط الصورة والحفظ..." : "Compressing & saving...") : (ar ? "إضافة ونشر" : "Add & publish")}</button></div>
       </form>
     </section>
 
