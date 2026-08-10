@@ -1,0 +1,32 @@
+{
+  "name": "alturud-hr-erp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
+    "db:seed": "node --env-file=.env.local --import tsx scripts/seed.ts",
+    "security:check": "node scripts/security-check.mjs"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "jose": "^6.1.0",
+    "next": "16.2.11",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.5",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
