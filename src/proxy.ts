@@ -8,7 +8,10 @@ const PUBLIC=[
   "/api/auth/login",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/alturud-logo.svg"
+  "/alturud-logo.svg",
+  "/hero-port.svg",
+  "/hero-containers.svg",
+  "/hero-delivery.svg"
 ];
 function isPublic(path:string){return PUBLIC.some(p=>path===p||path.startsWith(`${p}/`))||path.startsWith("/_next/")||path==="/favicon.ico"}
 function sessionName(){return process.env.COOKIE_SECURE==="true"?"__Host-alturud_session":"alturud_session"}
