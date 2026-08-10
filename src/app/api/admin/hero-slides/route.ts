@@ -14,7 +14,7 @@ const metaSchema = z.object({
   descriptionAr: z.string().trim().max(600).optional().default(""),
   descriptionEn: z.string().trim().max(600).optional().default(""),
   sortOrder: z.coerce.number().int().min(0).max(10000).default(0),
-  isActive: z.enum(["true", "false"]).transform(v => v === "true").default("true"),
+  isActive: z.enum(["true", "false"]).transform(v => v === "true").default(true),
   durationSeconds: z.coerce.number().int().min(2).max(30).default(5),
   overlayOpacity: z.coerce.number().min(0).max(0.8).default(0.45),
   startsAt: z.string().trim().max(40).optional().default(""),
