@@ -36,8 +36,14 @@ export async function POST(request: NextRequest) {
   if (!/\.xlsx$/i.test(file.name)) return safeJsonError("Only .xlsx files are allowed", 415);
 
   const workbook = new ExcelJS.Workbook();
-  try { await workbook.xlsx.load(Buffer.from(await file.arrayBuffer())); }
-  catch { return safeJsonError("Invalid or corrupted Excel file", 422); }
+  try {
+    const excelBuffer = Buffer.from(await file.arrayBuffer());
+    // ExcelJS currently ships Buffer typings that can conflict with newer Node typings.
+    // Runtime input is a genuine Node Buffer; keep the compatibility cast isolated here.
+    await workbook.xlsx.load(excelBuffer as any);
+  } catch {
+    return safeJsonError("Invalid or corrupted Excel file", 422);
+  }
   const sheet = workbook.worksheets[0];
   if (!sheet) return safeJsonError("Workbook has no worksheet", 422);
 
