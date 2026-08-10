@@ -1,74 +1,12 @@
 "use client";
-import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { FormEvent,useState } from "react";
 import { useRouter } from "next/navigation";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import type { Locale } from "@/lib/locale";
 
-type Labels = {
-  platform:string; headline:string; description:string; authorized:string; signIn:string; prompt:string;
-  email:string; password:string; verifying:string; secureSignIn:string; help:string; unable:string; badges:readonly string[];
-};
-
-export function LoginForm({ locale, labels }: { locale: Locale; labels: Labels }) {
-  const [error,setError]=useState("");
-  const [busy,setBusy]=useState(false);
-  const router=useRouter();
-
-  async function submit(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15_000);
-
-    try {
-      const f=new FormData(e.currentTarget);
-      const r=await fetch("/api/auth/login",{
-        method:"POST",
-        headers:{"content-type":"application/json"},
-        body:JSON.stringify({email:f.get("email"),password:f.get("password")}),
-        signal:controller.signal
-      });
-
-      const d=await r.json().catch(()=>({error:""}));
-      if(!r.ok){
-        const api=String(d.error??"");
-        const arErrors:Record<string,string>={
-          "Invalid credentials":"البريد الإلكتروني أو كلمة المرور غير صحيحة.",
-          "Too many attempts. Try again later.":"عدد محاولات الدخول كبير. حاول مرة أخرى لاحقًا.",
-          "Request rejected":"تم رفض الطلب لأسباب أمنية."
-        };
-        setError(locale==="ar"?(arErrors[api]??labels.unable):(api||labels.unable));
-        return;
-      }
-
-      router.replace("/dashboard");
-      router.refresh();
-    } catch {
-      setError(labels.unable);
-    } finally {
-      window.clearTimeout(timeout);
-      setBusy(false);
-    }
-  }
-
-  return <main className="loginPage">
-    <section className="loginVisual">
-      <div className="loginLogo"><div className="brandMark">A</div><div><strong>ALTURUD</strong><div>INTERNATIONAL</div></div></div>
-      <div><div className="eyebrow heroEyebrow">{labels.platform}</div><h1>{labels.headline}</h1><p>{labels.description}</p></div>
-      <div className="securityStrip">{labels.badges.map(x=><span key={x}>{x}</span>)}</div>
-    </section>
-    <section className="loginSide">
-      <div className="loginLanguage"><LanguageToggle locale={locale}/></div>
-      <form className="loginBox" onSubmit={submit}>
-        <div className="eyebrow">{labels.authorized}</div><h2>{labels.signIn}</h2><p>{labels.prompt}</p>
-        {error&&<div className="alert error">{error}</div>}
-        <label>{labels.email}<input name="email" type="email" autoComplete="username" required /></label>
-        <label>{labels.password}<input name="password" type="password" autoComplete="current-password" minLength={12} required /></label>
-        <button className="primaryButton" disabled={busy}>{busy?labels.verifying:labels.secureSignIn}</button>
-        <div className="loginHelp">{labels.help}</div>
-      </form>
-    </section>
-  </main>;
+export function LoginForm({locale}:{locale:Locale}){
+  const router=useRouter(),ar=locale==="ar";const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
+  const t=ar?{title:"تسجيل الدخول",subtitle:"ALTURUD People · نظام الموارد البشرية",email:"البريد الإلكتروني",password:"كلمة المرور",login:"تسجيل الدخول",loading:"جارٍ تسجيل الدخول…",forgot:"هل نسيت كلمة المرور؟",invalid:"البريد الإلكتروني أو كلمة المرور غير صحيحة.",unavailable:"تعذر الاتصال بالنظام. حاول مرة أخرى."}:{title:"Sign in",subtitle:"ALTURUD People · Human Resources ERP",email:"Email address",password:"Password",login:"Sign in",loading:"Signing in…",forgot:"Forgot your password?",invalid:"Invalid email or password.",unavailable:"Unable to reach the system. Please try again."};
+  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const r=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,password})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(r.status===401?t.invalid:(d.error||t.unavailable));router.replace("/dashboard");router.refresh()}catch(e){setError(e instanceof Error?e.message:t.unavailable);setBusy(false)}}
+  return <form onSubmit={submit} className="formPanel" style={{maxWidth:480,width:"100%"}}><div style={{textAlign:"center",marginBottom:22}}><img src="/alturud-logo.svg" alt="ALTURUD" style={{width:175,height:92,objectFit:"contain"}}/><h1 style={{marginBottom:6}}>{t.title}</h1><p>{t.subtitle}</p></div>{error&&<div className="alert error">{error}</div>}<div className="formGrid" style={{gridTemplateColumns:"1fr"}}><label>{t.email}<input type="email" dir="ltr" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com"/></label><label>{t.password}<input type="password" autoComplete="current-password" minLength={12} required value={password} onChange={e=>setPassword(e.target.value)}/></label></div><div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}><Link href="/forgot-password">{t.forgot}</Link></div><div className="formActions" style={{marginTop:18}}><button className="primaryButton" style={{width:"100%"}} disabled={busy}>{busy?t.loading:t.login}</button></div></form>
 }
